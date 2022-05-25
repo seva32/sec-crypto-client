@@ -1,10 +1,8 @@
-import * as React from "react";
+import React, { FormEvent } from "react";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Checkbox from "@mui/material/Checkbox";
 import Link from "@mui/material/Link";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
@@ -15,7 +13,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../../utils/constansts";
 
-function Copyright(props) {
+function Copyright(props: { sx: { mt: number } }) {
   return (
     <Typography
       variant="body2"
@@ -24,8 +22,8 @@ function Copyright(props) {
       {...props}
     >
       {"Copyright © "}
-      <Link color="inherit" href="https://mui.com/">
-        Cryptonise
+      <Link color="inherit" href="https://www.sebastianfantini.com/">
+        sebastianfantini.com
       </Link>{" "}
       {new Date().getFullYear()}
       {"."}
@@ -35,17 +33,18 @@ function Copyright(props) {
 
 const theme = createTheme();
 
-export default function SignUp() {
+export function Signup() {
   let navigate = useNavigate();
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    // @ts-ignore
     const data = new FormData(event.currentTarget);
     const form = {
-      fullname: `${data.get("fname")} ${data.get("lname")}`,
+      fullname: `${data.get("fname")} ${data.get("lname")}`.trim(),
       email: data.get("email"),
       password: data.get("password"),
     };
-    await axios.post(`${BASE_URL}/api/v1/user/signup`, form);
+    await axios.post(`${BASE_URL}/user/auth/signup`, form);
     navigate("/");
   };
 
@@ -112,14 +111,6 @@ export default function SignUp() {
                   type="password"
                   id="password"
                   autoComplete="new-password"
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <FormControlLabel
-                  control={
-                    <Checkbox value="allowExtraEmails" color="primary" />
-                  }
-                  label="I want to receive inspiration, marketing promotions and updates via email."
                 />
               </Grid>
             </Grid>

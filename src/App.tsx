@@ -1,25 +1,17 @@
-// import React, {Fragment} from 'react';
-// import Header from './components/Layout/Header';
-// import PostList from './components/Pages/PostListI';
-
-// function App() {
-//   return (
-//     <Fragment>
-//       <Header/>
-//       <PostList/>
-//     </Fragment>
-//   );
-// }
-
-import React, { useState } from "react";
-import Index from "./components/Index";
+import React, { useState, useEffect } from "react";
+import { Router } from "./components";
 
 function App() {
-  const [isLoggedIn, setLoggedIn] = useState(false);
+  const [isLoggedIn, setLoggedIn] = useState<boolean>(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) setLoggedIn(true);
+  }, []);
 
   return (
     <>
-      <Index isLoggedIn={isLoggedIn} setLoggedIn={setLoggedIn} />
+      <Router isLoggedIn={isLoggedIn} setLoggedIn={setLoggedIn} />
     </>
   );
 }

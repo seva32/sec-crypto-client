@@ -1,4 +1,9 @@
-import * as React from "react";
+import React, {
+  FormEvent,
+  Dispatch,
+  SetStateAction,
+  ReactElement,
+} from "react";
 import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
@@ -13,29 +18,36 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { BASE_URL } from "../../utils/constansts";
 
+interface Props {
+  setIsLoggedIn: Dispatch<SetStateAction<boolean>>;
+}
+
 const theme = createTheme();
 
-export default function SignIn(props) {
+export function Signin(props: Props): ReactElement {
   const { setIsLoggedIn } = props;
-  const [errrorMessage, setErrorMessage] = React.useState("");
+  const [errrorMessage, setErrorMessage] = React.useState<string>("");
   let navigate = useNavigate();
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    // @ts-ignore
     const formData = new FormData(event.currentTarget);
     const form = {
       email: formData.get("email"),
       password: formData.get("password"),
     };
-    const { data } = await axios.post(`${BASE_URL}/api/v1/user/signin`, form);
-    if (data.status === parseInt("401")) {
+    const { data } = await axios.post(`${BASE_URL}/user/auth/signin`, form);
+    if (data.status === parseInt("401") || data.status === parseInt("404")) {
       setErrorMessage(data.response);
     } else {
       localStorage.setItem("token", data.token);
+      localStorage.setItem("id", data.user);
       setIsLoggedIn(true);
-      navigate("/video");
+      navigate("/dashboard");
     }
   };
+
   return (
     <ThemeProvider theme={theme}>
       <Container component="main" maxWidth="xs">
@@ -78,7 +90,7 @@ export default function SignIn(props) {
               id="password"
               autoComplete="current-password"
             />
-            <Typography component="p" variant="p" color="red">
+            <Typography component="p" variant="body1" color="red">
               {errrorMessage}
             </Typography>
             <Button
@@ -90,11 +102,7 @@ export default function SignIn(props) {
               Sign In
             </Button>
             <Grid container>
-              <Grid item xs>
-                <Link href="/Signup" variant="body2">
-                  Forgot password?
-                </Link>
-              </Grid>
+              <Grid item xs></Grid>
               <Grid item>
                 <Link href="SignUp" variant="body2">
                   {"Don't have an account? Sign Up"}
