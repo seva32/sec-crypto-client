@@ -1,5 +1,6 @@
-import React, { ReactElement, useState } from "react";
-import Typography from "@mui/material/Typography";
+import React, { ReactElement, useEffect, useState, useCallback } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   Container,
   Box,
@@ -13,21 +14,30 @@ import {
   MenuItem,
   Button,
   TextField,
+  Tooltip,
+  IconButton,
+  Checkbox,
+  FormControlLabel,
+  Typography,
 } from "@mui/material";
-import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { BASE_URL } from "../../utils/constansts";
-import InfoPanel from "../InfoPanel/InfoPanel";
+import { Favorite, Delete } from "@material-ui/icons";
+
+import { BASE_URL } from "../../utils/constants";
+import { txlist, balancemulti } from "../../utils/apis";
+import { isOldWallet, weiToEth, fixedPoint } from "../../utils/helpers";
+import { Alert, InfoPanel } from "..";
 
 interface Props {
   setLoggedIn: (val: boolean) => void;
 }
 
 export type AddressProps = {
+  _id: string;
   title: string;
   address: string;
   fave?: boolean;
-  _id: string;
+  usd?: string;
+  eur?: string;
 };
 
 export function Address({ setLoggedIn }: Props): ReactElement {
@@ -36,32 +46,122 @@ export function Address({ setLoggedIn }: Props): ReactElement {
   const [addressId] = useState(id);
   const [addressData, setAddressData] = React.useState<AddressProps>();
   const [isLoading, setIsLoading] = useState(false);
-  const [currency, setCurrency] = useState<string>("");
+  const [currency, setCurrency] = useState<"usd" | "eur">("usd");
   const [editMode, setEditMode] = useState<boolean>(false);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isOld, setIsOld] = useState<boolean>(false);
+  const [currentBalance, setCurrentBalance] = useState<number | null>();
+  const [showAlert, setShowAlert] = useState<string>("");
+  const [editFields, setEditFields] = useState<{
+    title?: string;
+    rate?: number;
+    currencyField?: string;
+    fave?: boolean;
+  }>();
 
-  React.useEffect(() => {
-    async function fetchData() {
-      try {
-        setIsLoading(true);
-        const token = localStorage.getItem("token");
-        const { data } = await axios.get(
-          `${BASE_URL}/address/address/${addressId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        setIsLoading(false);
-        setAddressData(data);
-      } catch {
-        setIsLoading(false);
-        setLoggedIn(false);
-        navigate("/");
-      }
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      const { data } = await axios.get(
+        `${BASE_URL}/address/address/${addressId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const transactions = await axios.get(txlist(data.address || ""));
+      transactions?.data?.result?.forEach((tx: any) => {
+        if (tx.timeStamp && isOldWallet(tx.timeStamp)) setIsOld(true);
+      });
+
+      const balanceRaw = await axios.get(balancemulti([data.address]));
+      setCurrentBalance(
+        weiToEth(balanceRaw.data?.result?.[0].balance?.toString())
+      );
+
+      setIsLoading(false);
+      setAddressData(data);
+    } catch {
+      setIsLoading(false);
+      setLoggedIn(false);
+      navigate("/");
     }
-    fetchData();
   }, [addressId, navigate, setLoggedIn]);
+
+  useEffect(() => {
+    fetchData();
+  }, [addressId, fetchData]);
+
+  useEffect(() => {
+    const updateAddress = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        let addressUpdate = {
+          ...addressData,
+          title: editFields?.title,
+          fave: editFields?.fave,
+          [editFields?.currencyField as string]: editFields?.rate?.toString(),
+        };
+        setIsLoading(true);
+        await axios.put(`${BASE_URL}/address/update`, addressUpdate, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        fetchData();
+      } catch (e) {
+        console.error(e);
+        setIsLoading(false);
+      } finally {
+        setIsEditing(false);
+      }
+    };
+    if (editMode) {
+      setEditFields({
+        title: addressData?.title || "",
+        rate:
+          Number(currency === "usd" ? addressData?.usd : addressData?.eur) || 0,
+        currencyField: currency,
+        fave: addressData?.fave,
+      });
+      setIsEditing(true);
+    }
+    if (!editMode && isEditing) {
+      updateAddress();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editMode]);
+
+  function handleDelete() {
+    setShowAlert("This action will delete this Wallet from your account");
+  }
+
+  function handleAcceptDelete() {
+    const token = localStorage.getItem("token");
+    axios
+      .delete(`${BASE_URL}/address/delete/${addressId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      .then(() => {
+        setShowAlert("");
+        navigate("/dashboard");
+      })
+      .catch(() => {
+        setShowAlert("We could not process your request");
+      });
+  }
+
+  const alertProps = {
+    handleClose: () => setShowAlert(""),
+    handleAccept: handleAcceptDelete,
+    titleCopy: "Warning",
+    bodyCopy: showAlert,
+  };
 
   if (isLoading)
     return (
@@ -69,6 +169,18 @@ export function Address({ setLoggedIn }: Props): ReactElement {
         <CircularProgress />
       </Box>
     );
+
+  const conversionRate =
+    currency === "usd" ? addressData?.usd : addressData?.eur;
+  const balance =
+    currentBalance && conversionRate
+      ? fixedPoint(currentBalance * Number(conversionRate)).toFixed(2)
+      : currentBalance === 0
+      ? 0
+      : "Balance unavailable";
+  const exchangeRate = Number(
+    currency === "usd" ? addressData?.usd : addressData?.eur
+  ).toFixed(2);
 
   return (
     <Container style={{ position: "relative" }}>
@@ -88,19 +200,59 @@ export function Address({ setLoggedIn }: Props): ReactElement {
         <Typography component="h2" variant="h2">
           Wallet:{" "}
           {editMode ? (
-            <TextField
-              id="outlined-basic"
-              label="Outlined"
-              variant="outlined"
-            />
+            <>
+              <TextField
+                id="title"
+                label="Title"
+                variant="outlined"
+                InputProps={{
+                  style: {
+                    fontSize: 50,
+                    maxHeight: "4rem",
+                    boxSizing: "border-box",
+                  },
+                }}
+                value={editFields?.title || ""}
+                onChange={(e) =>
+                  setEditFields((prev) => ({ ...prev, title: e.target.value }))
+                }
+              />
+              <FormControlLabel
+                label="Favorite"
+                style={{ marginLeft: "1rem" }}
+                control={
+                  <Checkbox
+                    checked={editFields?.fave || false}
+                    onChange={() =>
+                      setEditFields((prev) => ({ ...prev, fave: !prev?.fave }))
+                    }
+                    inputProps={{ "aria-label": "controlled" }}
+                  />
+                }
+              />
+              <Tooltip title="Delete">
+                <IconButton onClick={handleDelete}>
+                  <Delete fontSize="large" color="error" />
+                </IconButton>
+              </Tooltip>
+            </>
           ) : (
-            <>{addressData?.title}</>
+            <>
+              {addressData?.title}{" "}
+              {addressData?.fave && (
+                <Tooltip title="Favorite wallet" style={{ cursor: "pointer" }}>
+                  <Favorite color="secondary" fontSize="large" />
+                </Tooltip>
+              )}
+            </>
           )}
         </Typography>
       </Box>
-      <Box margin={"1rem"}>
-        <InfoPanel bodyCopy="Wallet is old!" />
-      </Box>
+      {isOld && (
+        <Box margin={"1rem"}>
+          <InfoPanel bodyCopy="Wallet is old!" />
+        </Box>
+      )}
       <Grid container spacing={2} marginTop={2}>
         <Grid item xs={12} md={6}>
           <Card
@@ -120,12 +272,20 @@ export function Address({ setLoggedIn }: Props): ReactElement {
               <Typography component="h2" variant="h5">
                 {editMode ? (
                   <TextField
-                    id="outlined-basic"
-                    label="Outlined"
+                    id="rate"
+                    label="Rate"
                     variant="outlined"
+                    type="number"
+                    value={editFields?.rate}
+                    onChange={(e) =>
+                      setEditFields((prev) => ({
+                        ...prev,
+                        rate: e.target.value as unknown as number,
+                      }))
+                    }
                   />
                 ) : (
-                  "Exchange Rate"
+                  exchangeRate
                 )}
               </Typography>
             </CardContent>
@@ -152,8 +312,8 @@ export function Address({ setLoggedIn }: Props): ReactElement {
                   labelId="select-label"
                   id="currency-select"
                   value={currency}
-                  label="Age"
-                  onChange={(e) => setCurrency(e.target.value)}
+                  label="Currency"
+                  onChange={(e) => setCurrency(e.target.value as "usd" | "eur")}
                   style={{ maxWidth: "50%" }}
                 >
                   <MenuItem value={"eur"}>EUR</MenuItem>
@@ -163,12 +323,13 @@ export function Address({ setLoggedIn }: Props): ReactElement {
             </CardContent>
             <CardContent sx={{ position: "absolute", bottom: "0" }}>
               <Typography component="h2" variant="h5">
-                Balance
+                {balance}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+      {!!showAlert && <Alert {...alertProps} />}
     </Container>
   );
 }

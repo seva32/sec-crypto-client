@@ -6,3 +6,4 @@ export { Signin } from "./Auth/Signin";
 export { Signup } from "./Auth/Signup";
 export { Dashboard } from "./Dashboard/Dashboard";
 export { Address } from "./Dashboard/Address";
+export { InfoPanel } from "./InfoPanel/InfoPanel";

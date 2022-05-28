@@ -1,4 +1,4 @@
-import { YEAR_MS } from "./constansts";
+import { YEAR_MS } from "./constants";
 
 export function fixedPoint(num: number): number {
   return Math.round(num * 1e18) / 1e18;
@@ -16,4 +16,8 @@ export function isOldWallet(num: string): boolean {
   const value = Number(num);
   if (isNaN(value)) return false;
   return value * 1000 < Date.now() - YEAR_MS;
+}
+
+export function usdToEurConversor(usd: number, usdToEur: number) {
+  return fixedPoint(usd * usdToEur).toFixed(2);
 }

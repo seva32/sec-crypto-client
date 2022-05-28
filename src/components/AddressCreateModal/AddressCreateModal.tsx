@@ -1,4 +1,5 @@
-import React, { FormEvent, useState, useEffect } from "react";
+import React, { FormEvent, useState } from "react";
+import axios from "axios";
 import {
   Modal,
   TextField,
@@ -8,10 +9,11 @@ import {
   Checkbox,
   FormControlLabel,
 } from "@mui/material";
-import axios from "axios";
-import { BASE_URL, ETH_KEY, ETH_URL } from "../../utils/constansts";
+
+import { BASE_URL } from "../../utils/constants";
+import { conversionURL, ethprice, txlist } from "../../utils/apis";
+import { usdToEurConversor } from "../../utils/helpers";
 import { Alert } from "..";
-import { weiToEth, isOldWallet } from "../../utils/helpers";
 
 type Props = {
   open: boolean;
@@ -36,14 +38,6 @@ const bluredInitialState = {
   fave: false,
 };
 
-const app = axios.create({
-  headers: {
-    // "Access-Control-Allow-Origin": "*",
-    // "Content-Type": "application/json",
-  },
-  withCredentials: false,
-});
-
 export function AddressCreateModal({ open, handleClose }: Props) {
   const [address, setAddress] = useState<string>("");
   const [title, setTitle] = useState<string>("");
@@ -53,34 +47,37 @@ export function AddressCreateModal({ open, handleClose }: Props) {
     bluredInitialState
   );
 
-  const urlnow =
-    "https://api.etherscan.io/api?module=account&action=balancemulti&address=0xddbd2b932c763ba5b1b7ae3b362eac3e8d40121a,0x63a9975ba31b0b9626b34300f7f627147df1f526,0x198ef1ec325a96cc354c7266a038be8b5c558f67&tag=earliest&apikey=NSZCD6S4TKVWRS13PMQFMVTNP6H7NAGHUY";
-
-  const urlnow2 =
-    "https://api.etherscan.io/api?module=stats&action=ethprice&apikey=NSZCD6S4TKVWRS13PMQFMVTNP6H7NAGHUY";
-
-  const urlnow3 =
-    "https://api.etherscan.io/api?module=account&action=txlist&address=0x1A2D3f4CE82eF3bcF153F37f7c154c719604D563&startblock=0&endblock=99999999&page=1&offset=10&sort=asc&apikey=NSZCD6S4TKVWRS13PMQFMVTNP6H7NAGHUY";
-
   const submitForm = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const { data } = await app.get(urlnow3);
-      console.log(
-        data.result?.forEach((val: any) =>
-          console.log(isOldWallet(val.timeStamp || ""))
-        )
+      const { data } = await axios.get(txlist(address));
+
+      if (data.message === "NOTOK") {
+        throw new Error("Invalid address!");
+      }
+
+      const endpoints = [conversionURL, ethprice];
+      const [{ data: usd2eur }, { data: eth2usd }] = await Promise.all(
+        endpoints.map((endpoint) => axios.get(endpoint))
       );
-    } catch (e) {
-      console.error("wtf ", e);
-    }
-    const formData = {
-      title,
-      address,
-      fave: isFave,
-    };
-    const token = localStorage.getItem("token");
-    try {
+      const usdToEur = usd2eur?.usd;
+      const ethusd = Number(eth2usd.result?.ethusd);
+
+      if (!usdToEur || isNaN(ethusd)) {
+        setShowAlert("We could not process your request, please try again.");
+        return;
+      }
+
+      const formData = {
+        title,
+        address,
+        fave: isFave,
+        eur: usdToEurConversor(ethusd, usdToEur).toString(),
+        usd: ethusd.toString(),
+      };
+
+      const token = localStorage.getItem("token");
+
       await axios.post(`${BASE_URL}/address/create`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,

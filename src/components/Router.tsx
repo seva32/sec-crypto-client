@@ -1,6 +1,7 @@
-import { Signin, Signup, Header, Dashboard, Address } from ".";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 import React, { ReactElement, Dispatch, SetStateAction } from "react";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
+import { Signin, Signup, Header, Dashboard, Address } from ".";
 
 interface Props {
   isLoggedIn: boolean;
@@ -17,7 +18,7 @@ export function Router(props: Props): ReactElement {
         {isLoggedIn ? (
           <Routes>
             <Route
-              path="dashboard/*"
+              path="dashboard"
               element={<Dashboard setLoggedIn={setLoggedIn} />}
             ></Route>
             <Route

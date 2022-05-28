@@ -1,15 +1,24 @@
 import React, { ReactElement, useEffect, useCallback, useState } from "react";
-import Typography from "@mui/material/Typography";
-import { Box, Button, CircularProgress, Container } from "@mui/material";
-import Card from "@mui/material/Card";
-import CardActionArea from "@mui/material/CardActionArea";
-import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
-import Grid from "@mui/material/Grid";
-import { Link, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { Address, AddressProps } from "./Address";
-import { BASE_URL } from "../../utils/constansts";
+import { Favorite } from "@material-ui/icons";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Container,
+  Checkbox,
+  FormControlLabel,
+  Card,
+  CardActionArea,
+  CardContent,
+  CardMedia,
+  Grid,
+  Typography,
+} from "@mui/material";
+
+import { BASE_URL } from "../../utils/constants";
+import { AddressProps } from "./Address";
 import { AddressCreateModal } from "..";
 
 interface Props {
@@ -19,9 +28,13 @@ interface Props {
 export function Dashboard({ setLoggedIn }: Props): ReactElement {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [sortByFave, setSortByFave] = useState(false);
   const handleOpen = () => setOpen(true);
 
   const [addresses, setAddresses] = React.useState<AddressProps[]>([]);
+  const [addressesUnsorted, setAddressesUnsorted] = useState<AddressProps[]>(
+    []
+  );
   const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
@@ -46,6 +59,21 @@ export function Dashboard({ setLoggedIn }: Props): ReactElement {
     fetchData();
   }, [fetchData]);
 
+  useEffect(() => {
+    if (sortByFave && !addressesUnsorted.length) {
+      setAddressesUnsorted([...addresses]);
+      addresses.sort(function (x, y) {
+        return x.fave === y.fave ? 0 : x.fave ? -1 : 1;
+      });
+    }
+
+    if (!sortByFave && addressesUnsorted.length) {
+      setAddresses(addressesUnsorted);
+      setAddressesUnsorted([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortByFave]);
+
   const handleClose = () => {
     fetchData();
     setOpen(false);
@@ -63,11 +91,22 @@ export function Dashboard({ setLoggedIn }: Props): ReactElement {
       <Container style={{ marginTop: "1rem" }}>
         <Box textAlign="center">
           <Button variant="contained" onClick={handleOpen}>
-            Add New Address
+            Add New Wallet
           </Button>
         </Box>
       </Container>
       <AddressCreateModal open={open} handleClose={handleClose} />
+      <FormControlLabel
+        label="Sort by Favorite"
+        style={{ marginLeft: "1rem" }}
+        control={
+          <Checkbox
+            checked={sortByFave}
+            onChange={() => setSortByFave(!sortByFave)}
+            inputProps={{ "aria-label": "controlled" }}
+          />
+        }
+      />
       <Container>
         <Grid container spacing={3} marginTop={2}>
           {addresses.length ? (
@@ -75,7 +114,14 @@ export function Dashboard({ setLoggedIn }: Props): ReactElement {
               const linkTo = `${address._id}`;
               return (
                 <Grid item xs={12} md={12} key={address._id}>
-                  <CardActionArea>
+                  <CardActionArea style={{ position: "relative" }}>
+                    {address.fave && (
+                      <div
+                        style={{ position: "absolute", top: "0", left: "0" }}
+                      >
+                        <Favorite color="secondary" fontSize="small" />
+                      </div>
+                    )}
                     <Link
                       to={linkTo}
                       style={{ textDecoration: "none", color: "black" }}

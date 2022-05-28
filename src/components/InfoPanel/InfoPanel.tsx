@@ -1,12 +1,12 @@
+import React from "react";
 import { Card, CardContent, Typography } from "@mui/material";
 import { WarningOutlined } from "@material-ui/icons";
-import React from "react";
 
 type Props = {
   bodyCopy: string;
 };
 
-function InfoPanel({ bodyCopy }: Props) {
+export function InfoPanel({ bodyCopy }: Props) {
   return (
     <div>
       <Card sx={{ minWidth: 275 }}>
@@ -31,5 +31,3 @@ function InfoPanel({ bodyCopy }: Props) {
     </div>
   );
 }
-
-export default InfoPanel;

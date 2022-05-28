@@ -12,7 +12,7 @@ export function Header({ isLoggedIn }: Props): React.ReactElement {
       <AppBar position="static">
         <Toolbar>
           <Typography
-            variant="h6"
+            variant="h4"
             noWrap
             component="div"
             sx={{ flexGrow: 1, display: { xs: "none", sm: "block" } }}
@@ -21,7 +21,7 @@ export function Header({ isLoggedIn }: Props): React.ReactElement {
               to={`/dashboard`}
               style={{ textDecoration: "none", color: "white" }}
             >
-              Crytonize
+              CRYTONIZE
             </Link>
           </Typography>
 

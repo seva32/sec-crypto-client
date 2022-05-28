@@ -10,11 +10,17 @@ import {
 
 interface Props {
   handleClose: () => void;
+  handleAccept?: (() => void) | null;
   titleCopy: string;
   bodyCopy: string;
 }
 
-export function Alert({ handleClose, titleCopy, bodyCopy }: Props) {
+export function Alert({
+  handleClose,
+  titleCopy,
+  bodyCopy,
+  handleAccept = null,
+}: Props) {
   return (
     <Dialog
       open
@@ -29,6 +35,11 @@ export function Alert({ handleClose, titleCopy, bodyCopy }: Props) {
         </DialogContentText>
       </DialogContent>
       <DialogActions>
+        {handleAccept && (
+          <Button onClick={handleAccept} autoFocus>
+            Accept
+          </Button>
+        )}
         <Button onClick={handleClose} autoFocus>
           Close
         </Button>
