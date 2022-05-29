@@ -32,7 +32,7 @@ interface Props {
 }
 
 export type AddressProps = {
-  _id: string;
+  _id?: string;
   title: string;
   address: string;
   fave?: boolean;

@@ -1,4 +1,4 @@
-import React, { FormEvent, useState } from "react";
+import React, { FormEvent, useState, useEffect, useRef } from "react";
 import axios from "axios";
 import {
   Modal,
@@ -10,9 +10,16 @@ import {
   FormControlLabel,
 } from "@mui/material";
 
-import { BASE_URL } from "../../utils/constants";
-import { conversionURL, ethprice, txlist } from "../../utils/apis";
+import { conversionURL, ethprice } from "../../utils/apis";
 import { usdToEurConversor } from "../../utils/helpers";
+import { usePrevious } from "../../utils/usePrevious";
+import { useAppSelector, useAppDispatch } from "../../store/storeHooks";
+import {
+  addUserAddress,
+  selectAddAddressStatus,
+  selectGetTransactionsByAddressStatus,
+  resetStatuses,
+} from "../../features/address/addressSlice";
 import { Alert } from "..";
 
 type Props = {
@@ -46,28 +53,52 @@ export function AddressCreateModal({ open, handleClose }: Props) {
   const [blured, setBlured] = useState<{ title: boolean; address: boolean }>(
     bluredInitialState
   );
+  const [submitStarted, setSubmitStarted] = useState<boolean>(false);
+  // const prevStatus = useRef(null);
+
+  const dispatch = useAppDispatch();
+  const status = useAppSelector(selectAddAddressStatus);
+  const prevStatus = usePrevious(status);
+  const txByAddressStatus = useAppSelector(
+    selectGetTransactionsByAddressStatus
+  );
+
+  useEffect(() => {
+    console.log(submitStarted, status, txByAddressStatus);
+
+    if (
+      submitStarted &&
+      (status === "failed" || txByAddressStatus === "failed")
+    ) {
+      const errorMessage =
+        status === "failed"
+          ? "This wallet address already exists in your account."
+          : "We could not process your request, please verify if the address is valid and try again.";
+      dispatch(resetStatuses());
+      setBlured(bluredInitialState);
+      setSubmitStarted(false);
+      setShowAlert(errorMessage);
+    } else if (submitStarted && status === "idle" && prevStatus === "loading") {
+      dispatch(resetStatuses());
+      setBlured(bluredInitialState);
+      setSubmitStarted(false);
+      handleClose();
+    }
+  }, [status, txByAddressStatus, submitStarted, handleClose, dispatch]);
 
   const submitForm = async (e: FormEvent) => {
     e.preventDefault();
     try {
-      const { data } = await axios.get(txlist(address));
-
-      if (data.message === "NOTOK") {
-        throw new Error("Invalid address!");
-      }
-
       const endpoints = [conversionURL, ethprice];
       const [{ data: usd2eur }, { data: eth2usd }] = await Promise.all(
         endpoints.map((endpoint) => axios.get(endpoint))
       );
       const usdToEur = usd2eur?.usd;
       const ethusd = Number(eth2usd.result?.ethusd);
-
       if (!usdToEur || isNaN(ethusd)) {
         setShowAlert("We could not process your request, please try again.");
         return;
       }
-
       const formData = {
         title,
         address,
@@ -75,21 +106,14 @@ export function AddressCreateModal({ open, handleClose }: Props) {
         eur: usdToEurConversor(ethusd, usdToEur).toString(),
         usd: ethusd.toString(),
       };
-
-      const token = localStorage.getItem("token");
-
-      await axios.post(`${BASE_URL}/address/create`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      setBlured(bluredInitialState);
-      handleClose();
+      setSubmitStarted(true);
+      dispatch(addUserAddress(formData));
     } catch (error: any) {
       setShowAlert(
         error.response?.data?.message ||
           "We could not process your request, please try again."
       );
+      setSubmitStarted(false);
     }
   };
 
