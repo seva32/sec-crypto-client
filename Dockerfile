@@ -10,7 +10,7 @@ COPY ./package.json ./
 RUN npm install
 COPY . .
 EXPOSE 3000
-CMD ["npm", "run", "start"]
+CMD ["npm", "run", "build"]
 
 #production enviorment
 # FROM nginx:1.17.8-alpine
