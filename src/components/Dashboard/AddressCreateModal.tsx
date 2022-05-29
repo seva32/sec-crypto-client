@@ -95,7 +95,9 @@ export function AddressCreateModal({ open, handleClose }: Props) {
     try {
       const endpoints = [conversionURL, ethprice];
       const [{ data: usd2eur }, { data: eth2usd }] = await Promise.all(
-        endpoints.map((endpoint) => axios.get(endpoint))
+        endpoints.map((endpoint) =>
+          axios.get(endpoint, { withCredentials: true })
+        )
       );
       const usdToEur = usd2eur?.usd;
       const ethusd = Number(eth2usd.result?.ethusd);

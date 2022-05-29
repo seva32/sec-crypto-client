@@ -22,7 +22,7 @@ export function createAddress(formData: AddressProps) {
 }
 
 export function getTransactionsByAddress(address: string) {
-  return axios.get(txlist(address));
+  return axios.get(txlist(address), { withCredentials: true });
 }
 
 export function getAddress(addressId: string) {
@@ -35,7 +35,7 @@ export function getAddress(addressId: string) {
 }
 
 export function getBalanceMulti(addresses: string[]) {
-  return axios.get(balancemulti(addresses));
+  return axios.get(balancemulti(addresses), { withCredentials: true });
 }
 
 export function updateAddress(formData: AddressProps) {
