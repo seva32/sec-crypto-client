@@ -46,3 +46,12 @@ export function updateAddress(formData: AddressProps) {
     },
   });
 }
+
+export function deleteAddress(addressId: string) {
+  const token = localStorage.getItem("token");
+  return axios.delete(`${BASE_URL}/address/delete/${addressId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}

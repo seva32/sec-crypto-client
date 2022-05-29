@@ -8,6 +8,7 @@ import {
   getAddress,
   getBalanceMulti,
   updateAddress,
+  deleteAddress,
 } from "./addressAPI";
 import { AddressProps } from "../../components/Dashboard/AddressEditor";
 import { isOldWallet, weiToEth } from "../../utils/helpers";
@@ -23,6 +24,7 @@ export interface AddressState {
   getAddressStatus: Status;
   getBalanceMultiStatus: Status;
   updateAddressStatus: Status;
+  deleteAddressStatus: Status;
   transactions?: any;
   balance?: any;
 }
@@ -35,6 +37,7 @@ const initialState: AddressState = {
   getAddressStatus: "idle",
   getBalanceMultiStatus: "idle",
   updateAddressStatus: "idle",
+  deleteAddressStatus: "idle",
   address: {
     _id: "",
     address: "",
@@ -69,6 +72,13 @@ export const updateAddressAsync = createAsyncThunk(
   async (formData: AddressProps) => {
     const { data } = await updateAddress(formData);
     return data;
+  }
+);
+
+export const deleteAddressAsync = createAsyncThunk(
+  "address/deleteAddress",
+  async (addressId: string) => {
+    await deleteAddress(addressId);
   }
 );
 
@@ -149,6 +159,15 @@ export const addressSlice = createSlice({
       .addCase(updateAddressAsync.rejected, (state) => {
         state.updateAddressStatus = "failed";
       })
+      .addCase(deleteAddressAsync.pending, (state) => {
+        state.deleteAddressStatus = "loading";
+      })
+      .addCase(deleteAddressAsync.fulfilled, (state) => {
+        state.deleteAddressStatus = "idle";
+      })
+      .addCase(deleteAddressAsync.rejected, (state) => {
+        state.deleteAddressStatus = "failed";
+      })
       .addCase(getAddressAsync.pending, (state) => {
         state.getAddressStatus = "loading";
       })
@@ -201,6 +220,8 @@ export const selectGetBalanceMultiStatus = (state: RootState) =>
   state.address.getBalanceMultiStatus;
 export const selectUpdateAddressStatus = (state: RootState) =>
   state.address.updateAddressStatus;
+export const selectDeleteAddressStatus = (state: RootState) =>
+  state.address.deleteAddressStatus;
 
 export const addUserAddress =
   (formData: AddressProps): AppThunk =>

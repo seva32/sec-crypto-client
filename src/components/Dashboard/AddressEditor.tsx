@@ -1,6 +1,5 @@
-import React, { ReactElement, useEffect, useState, useCallback } from "react";
+import React, { ReactElement, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import {
   Container,
   Box,
@@ -31,10 +30,10 @@ import {
   selectGetTransactionsByAddressStatus,
   updateAddressAsync,
   selectUpdateAddressStatus,
+  deleteAddressAsync,
+  selectDeleteAddressStatus,
 } from "../../features/address/addressSlice";
-import { BASE_URL } from "../../utils/constants";
-import { txlist, balancemulti } from "../../utils/apis";
-import { isOldWallet, weiToEth, fixedPoint } from "../../utils/helpers";
+import { fixedPoint } from "../../utils/helpers";
 import { Alert, InfoPanel } from "..";
 import { usePrevious } from "../../utils/usePrevious";
 
@@ -70,10 +69,12 @@ export function Address({ setLoggedIn }: Props): ReactElement {
   const getAddressStatus = useAppSelector(selectGetAddressStatus);
   const getBalanceStatus = useAppSelector(selectGetBalanceMultiStatus);
   const updateStatus = useAppSelector(selectUpdateAddressStatus);
+  const deleteStatus = useAppSelector(selectDeleteAddressStatus);
   const getTransactionsStatus = useAppSelector(
     selectGetTransactionsByAddressStatus
   );
   const prevUpdateStatus = usePrevious(updateStatus);
+  const prevDeleteStatus = usePrevious(deleteStatus);
 
   useEffect(() => {
     if (addressId) {
@@ -86,6 +87,12 @@ export function Address({ setLoggedIn }: Props): ReactElement {
       dispatch(getAddressData(addressId as string));
     }
   }, [prevUpdateStatus, updateStatus, addressId, dispatch]);
+
+  useEffect(() => {
+    if (prevDeleteStatus === "loading" && deleteStatus === "idle") {
+      navigate("/dashboard");
+    }
+  }, [prevDeleteStatus, deleteStatus, dispatch, navigate]);
 
   useEffect(() => {
     const updateAddress = async () => {
@@ -124,20 +131,14 @@ export function Address({ setLoggedIn }: Props): ReactElement {
   }
 
   function handleAcceptDelete() {
-    const token = localStorage.getItem("token");
-    axios
-      .delete(`${BASE_URL}/address/delete/${addressId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      .then(() => {
-        setShowAlert("");
-        navigate("/dashboard");
-      })
-      .catch(() => {
-        setShowAlert("We could not process your request");
-      });
+    dispatch(deleteAddressAsync(addressId || ""));
+    // .then(() => {
+    //   setShowAlert("");
+    //   navigate("/dashboard");
+    // })
+    // .catch(() => {
+    //   setShowAlert("We could not process your request");
+    // });
   }
 
   const alertProps = {
