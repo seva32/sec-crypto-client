@@ -1,6 +1,6 @@
 import axios from "axios";
 import { AddressProps } from "../../components/Dashboard/AddressEditor";
-import { txlist } from "../../utils/apis";
+import { balancemulti, txlist } from "../../utils/apis";
 import { BASE_URL } from "../../utils/constants";
 
 export function getAddreses(): Promise<{ data: AddressProps[] }> {
@@ -23,4 +23,26 @@ export function createAddress(formData: AddressProps) {
 
 export function getTransactionsByAddress(address: string) {
   return axios.get(txlist(address));
+}
+
+export function getAddress(addressId: string) {
+  const token = localStorage.getItem("token");
+  return axios.get(`${BASE_URL}/address/address/${addressId}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+}
+
+export function getBalanceMulti(addresses: string[]) {
+  return axios.get(balancemulti(addresses));
+}
+
+export function updateAddress(formData: AddressProps) {
+  const token = localStorage.getItem("token");
+  return axios.put(`${BASE_URL}/address/update`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
 }

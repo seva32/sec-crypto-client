@@ -1,4 +1,4 @@
-import React, { FormEvent, useState, useEffect, useRef } from "react";
+import React, { FormEvent, useState, useEffect } from "react";
 import axios from "axios";
 import {
   Modal,
@@ -54,7 +54,6 @@ export function AddressCreateModal({ open, handleClose }: Props) {
     bluredInitialState
   );
   const [submitStarted, setSubmitStarted] = useState<boolean>(false);
-  // const prevStatus = useRef(null);
 
   const dispatch = useAppDispatch();
   const status = useAppSelector(selectAddAddressStatus);
@@ -64,8 +63,6 @@ export function AddressCreateModal({ open, handleClose }: Props) {
   );
 
   useEffect(() => {
-    console.log(submitStarted, status, txByAddressStatus);
-
     if (
       submitStarted &&
       (status === "failed" || txByAddressStatus === "failed")
@@ -84,7 +81,14 @@ export function AddressCreateModal({ open, handleClose }: Props) {
       setSubmitStarted(false);
       handleClose();
     }
-  }, [status, txByAddressStatus, submitStarted, handleClose, dispatch]);
+  }, [
+    status,
+    txByAddressStatus,
+    submitStarted,
+    handleClose,
+    dispatch,
+    prevStatus,
+  ]);
 
   const submitForm = async (e: FormEvent) => {
     e.preventDefault();

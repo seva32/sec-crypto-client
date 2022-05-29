@@ -22,10 +22,21 @@ import {
 } from "@mui/material";
 import { Favorite, Delete } from "@material-ui/icons";
 
+import { useAppSelector, useAppDispatch } from "../../store/storeHooks";
+import {
+  getAddressData,
+  selectAddress,
+  selectGetAddressStatus,
+  selectGetBalanceMultiStatus,
+  selectGetTransactionsByAddressStatus,
+  updateAddressAsync,
+  selectUpdateAddressStatus,
+} from "../../features/address/addressSlice";
 import { BASE_URL } from "../../utils/constants";
 import { txlist, balancemulti } from "../../utils/apis";
 import { isOldWallet, weiToEth, fixedPoint } from "../../utils/helpers";
 import { Alert, InfoPanel } from "..";
+import { usePrevious } from "../../utils/usePrevious";
 
 interface Props {
   setLoggedIn: (val: boolean) => void;
@@ -44,13 +55,9 @@ export function Address({ setLoggedIn }: Props): ReactElement {
   const { id } = useParams();
   const navigate = useNavigate();
   const [addressId] = useState(id);
-  const [addressData, setAddressData] = React.useState<AddressProps>();
-  const [isLoading, setIsLoading] = useState(false);
   const [currency, setCurrency] = useState<"usd" | "eur">("usd");
   const [editMode, setEditMode] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [isOld, setIsOld] = useState<boolean>(false);
-  const [currentBalance, setCurrentBalance] = useState<number | null>();
   const [showAlert, setShowAlert] = useState<string>("");
   const [editFields, setEditFields] = useState<{
     title?: string;
@@ -58,63 +65,40 @@ export function Address({ setLoggedIn }: Props): ReactElement {
     currencyField?: string;
     fave?: boolean;
   }>();
-
-  const fetchData = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const token = localStorage.getItem("token");
-      const { data } = await axios.get(
-        `${BASE_URL}/address/address/${addressId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const transactions = await axios.get(txlist(data.address || ""));
-      transactions?.data?.result?.forEach((tx: any) => {
-        if (tx.timeStamp && isOldWallet(tx.timeStamp)) setIsOld(true);
-      });
-
-      const balanceRaw = await axios.get(balancemulti([data.address]));
-      setCurrentBalance(
-        weiToEth(balanceRaw.data?.result?.[0].balance?.toString())
-      );
-
-      setIsLoading(false);
-      setAddressData(data);
-    } catch {
-      setIsLoading(false);
-      setLoggedIn(false);
-      navigate("/");
-    }
-  }, [addressId, navigate, setLoggedIn]);
+  const dispatch = useAppDispatch();
+  const addressData = useAppSelector(selectAddress);
+  const getAddressStatus = useAppSelector(selectGetAddressStatus);
+  const getBalanceStatus = useAppSelector(selectGetBalanceMultiStatus);
+  const updateStatus = useAppSelector(selectUpdateAddressStatus);
+  const getTransactionsStatus = useAppSelector(
+    selectGetTransactionsByAddressStatus
+  );
+  const prevUpdateStatus = usePrevious(updateStatus);
 
   useEffect(() => {
-    fetchData();
-  }, [addressId, fetchData]);
+    if (addressId) {
+      dispatch(getAddressData(addressId));
+    }
+  }, [addressId, dispatch]);
+
+  useEffect(() => {
+    if (prevUpdateStatus === "loading" && updateStatus === "idle") {
+      dispatch(getAddressData(addressId as string));
+    }
+  }, [prevUpdateStatus, updateStatus, addressId, dispatch]);
 
   useEffect(() => {
     const updateAddress = async () => {
       try {
-        const token = localStorage.getItem("token");
         let addressUpdate = {
           ...addressData,
-          title: editFields?.title,
+          title: editFields?.title || "",
           fave: editFields?.fave,
           [editFields?.currencyField as string]: editFields?.rate?.toString(),
         };
-        setIsLoading(true);
-        await axios.put(`${BASE_URL}/address/update`, addressUpdate, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        fetchData();
+        dispatch(updateAddressAsync(addressUpdate));
       } catch (e) {
         console.error(e);
-        setIsLoading(false);
       } finally {
         setIsEditing(false);
       }
@@ -163,7 +147,22 @@ export function Address({ setLoggedIn }: Props): ReactElement {
     bodyCopy: showAlert,
   };
 
-  if (isLoading)
+  if (
+    getAddressStatus === "failed" ||
+    getBalanceStatus === "failed" ||
+    getTransactionsStatus === "failed" ||
+    updateStatus === "failed"
+  ) {
+    setLoggedIn(false);
+    navigate("/");
+  }
+
+  if (
+    getAddressStatus === "loading" ||
+    getBalanceStatus === "loading" ||
+    getTransactionsStatus === "loading" ||
+    updateStatus === "loading"
+  )
     return (
       <Box textAlign="center" style={{ marginTop: "1rem" }}>
         <CircularProgress />
@@ -173,10 +172,11 @@ export function Address({ setLoggedIn }: Props): ReactElement {
   const conversionRate =
     currency === "usd" ? addressData?.usd : addressData?.eur;
   const balance =
-    currentBalance && conversionRate
-      ? fixedPoint(currentBalance * Number(conversionRate)).toFixed(2)
-      : currentBalance === 0
-      ? 0
+    addressData.currentBalance !== undefined &&
+    addressData.currentBalance !== null
+      ? fixedPoint(addressData.currentBalance * Number(conversionRate)).toFixed(
+          2
+        )
       : "Balance unavailable";
   const exchangeRate = Number(
     currency === "usd" ? addressData?.usd : addressData?.eur
@@ -248,7 +248,7 @@ export function Address({ setLoggedIn }: Props): ReactElement {
           )}
         </Typography>
       </Box>
-      {isOld && (
+      {addressData.isOld && (
         <Box margin={"1rem"}>
           <InfoPanel bodyCopy="Wallet is old!" />
         </Box>
